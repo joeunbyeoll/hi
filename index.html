@@ -6,6 +6,7 @@
 <title>Puzzle</title>
 
 <style>
+/* ===== 공통 ===== */
 html, body {
   margin: 0;
   padding: 0;
@@ -14,7 +15,7 @@ html, body {
   background: black;
   overflow: hidden;
   touch-action: none;
-  font-family: sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 /* ===== 비밀번호 화면 ===== */
@@ -27,15 +28,28 @@ html, body {
   justify-content: center;
 }
 
+#password-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 #password-input {
-  background: none;
-  border: none;
-  border-bottom: 2px solid white;
-  color: white;
+  width: 180px;
+  padding: 10px 0;
   font-size: 24px;
   text-align: center;
+  color: white;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid white;
   outline: none;
-  width: 160px;
+  letter-spacing: 6px;
+}
+
+/* placeholder 제거 */
+#password-input::placeholder {
+  color: rgba(255,255,255,0.4);
 }
 
 /* ===== 퍼즐 화면 ===== */
@@ -54,7 +68,6 @@ html, body {
   max-width: 90vh;
   max-height: 90vh;
   position: relative;
-  background: #000;
 }
 
 .piece {
@@ -70,7 +83,16 @@ html, body {
 
 <!-- 비밀번호 -->
 <div id="password-screen">
-  <input id="password-input" type="password" placeholder="PASSWORD" />
+  <div id="password-box">
+    <input
+      id="password-input"
+      type="password"
+      inputmode="numeric"
+      maxlength="4"
+      placeholder="••••"
+      autofocus
+    />
+  </div>
 </div>
 
 <!-- 퍼즐 -->
@@ -79,11 +101,9 @@ html, body {
 </div>
 
 <script>
-/* ===============================
-   비밀번호 → 이미지 매핑
-================================ */
+/* ===== 비밀번호 → 이미지 ===== */
 const PASSWORD_MAP = {
-  "0009": "image1.png",
+  "1111": "images/puzzle1.jpg",
   "2222": "images/puzzle2.jpg"
 };
 
@@ -105,9 +125,7 @@ passwordInput.addEventListener("input", () => {
   }
 });
 
-/* ===============================
-   퍼즐 생성
-================================ */
+/* ===== 퍼즐 생성 ===== */
 function createPuzzle(imageSrc) {
   const rows = 4;
   const cols = 4;
@@ -139,9 +157,7 @@ function createPuzzle(imageSrc) {
   }
 }
 
-/* ===============================
-   드래그 (모바일 + 마우스)
-================================ */
+/* ===== 드래그 (모바일 + 마우스) ===== */
 function enableDrag(piece) {
   let offsetX, offsetY;
 
@@ -149,7 +165,6 @@ function enableDrag(piece) {
     piece.setPointerCapture(e.pointerId);
     offsetX = e.clientX - piece.offsetLeft;
     offsetY = e.clientY - piece.offsetTop;
-    piece.style.cursor = "grabbing";
   });
 
   piece.addEventListener("pointermove", e => {
@@ -159,20 +174,15 @@ function enableDrag(piece) {
   });
 
   piece.addEventListener("pointerup", () => {
-    piece.style.cursor = "grab";
     snapIfClose(piece);
   });
 }
 
-/* ===============================
-   스냅
-================================ */
+/* ===== 스냅 ===== */
 function snapIfClose(piece) {
   const dx = piece.offsetLeft - piece.dataset.correctX;
   const dy = piece.offsetTop - piece.dataset.correctY;
-  const distance = Math.sqrt(dx * dx + dy * dy);
-
-  if (distance < 20) {
+  if (Math.hypot(dx, dy) < 20) {
     piece.style.left = piece.dataset.correctX + "px";
     piece.style.top = piece.dataset.correctY + "px";
     piece.style.pointerEvents = "none";
