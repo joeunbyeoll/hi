@@ -2,91 +2,112 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>hi2026</title>
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Puzzle</title>
 
   <style>
-    body {
-      margin: 0;
-      background: #000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      user-select: none;
-      color: #fff;
-      font-family: sans-serif;
+    * {
+      box-sizing: border-box;
     }
 
-    /* ===== 비밀번호 화면 ===== */
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      overflow: hidden;           /* ✅ 스크롤 차단 */
+      touch-action: none;         /* ✅ 확대/스크롤 차단 */
+      user-select: none;
+      font-family: sans-serif;
+      color: #fff;
+    }
+
+    /* =====================
+       비밀번호 화면
+    ===================== */
     #passwordScreen {
+      position: fixed;
+      inset: 0;
+      background: #000;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      justify-content: center;
       align-items: center;
+      gap: 16px;
+      z-index: 100;
     }
 
     #passwordScreen input {
-      padding: 10px 14px;
-      font-size: 16px;
-      background: #111;
+      padding: 12px 16px;
+      font-size: 18px;
+      background: #000;
       color: #fff;
-      border: 1px solid #555;
-      outline: none;
+      border: 1px solid #666;
       text-align: center;
+      outline: none;
     }
 
     #passwordScreen button {
-      padding: 8px 16px;
+      padding: 8px 20px;
       font-size: 14px;
-      cursor: pointer;
+      border: none;
       background: #fff;
       color: #000;
-      border: none;
+      cursor: pointer;
     }
 
-    /* ===== 퍼즐 화면 ===== */
+    /* =====================
+       퍼즐 화면
+    ===================== */
     #puzzleScreen {
+      width: 100vw;
+      height: 100vh;
       display: none;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* 🔹 화면의 60%만 차지 */
+    #puzzleWrapper {
+      height: 60vh;
+      aspect-ratio: 412 / 592;
     }
 
     #puzzle {
-      width: 412px;
-      height: 592px;
+      width: 100%;
+      height: 100%;
       position: relative;
-      background: #f5f5f5;
+      background: #f2f2f2;
       overflow: hidden;
     }
 
     .piece {
       position: absolute;
+      background-repeat: no-repeat;
       cursor: grab;
-      background-size: 412px 592px;
-      transition: box-shadow 0.2s;
+      touch-action: none;
     }
 
     .piece:active {
       cursor: grabbing;
-      box-shadow: 0 10px 20px rgba(0,0,0,0.25);
-      z-index: 10;
     }
 
     .fixed {
       pointer-events: none;
-      cursor: default;
-      box-shadow: none;
     }
 
     #complete {
       position: absolute;
       inset: 0;
+      background: rgba(245,245,245,0.9);
       display: flex;
       justify-content: center;
       align-items: center;
       font-size: 24px;
-      background: #f5f5f5;
       opacity: 0;
-      pointer-events: none;
       transition: opacity 1s;
+      pointer-events: none;
     }
 
     #complete.show {
@@ -97,38 +118,53 @@
 
 <body>
 
-<!-- ===== 비밀번호 입력 화면 ===== -->
+<!-- 비밀번호 화면 -->
 <div id="passwordScreen">
   <div>비밀번호를 입력하세요</div>
   <input type="password" id="passwordInput" />
   <button id="enterBtn">ENTER</button>
 </div>
 
-<!-- ===== 퍼즐 화면 ===== -->
+<!-- 퍼즐 화면 -->
 <div id="puzzleScreen">
-  <div id="puzzle">
-    <div id="complete">완성</div>
+  <div id="puzzleWrapper">
+    <div id="puzzle">
+      <div id="complete">완성</div>
+    </div>
   </div>
 </div>
 
 <script>
-  /* ===============================
-     비밀번호 → 이미지 매핑
-  =============================== */
+  /* =====================
+     비밀번호 → 이미지
+  ===================== */
   const passwordImages = {
-    "0009": "image1.png",
+    "0000": "image.png",
+    "1111": "image1.png",
     "2222": "image2.png",
     "duck": "image3.png"
   };
 
   const passwordScreen = document.getElementById("passwordScreen");
   const puzzleScreen = document.getElementById("puzzleScreen");
+  const puzzle = document.getElementById("puzzle");
+  const complete = document.getElementById("complete");
   const passwordInput = document.getElementById("passwordInput");
-  const enterBtn = document.getElementById("enterBtn");
+
+  const rows = 6;
+  const cols = 4;
 
   let imageSrc = "";
+  let selected = null;
+  let offsetX = 0;
+  let offsetY = 0;
 
-  function enterPuzzle() {
+  document.getElementById("enterBtn").addEventListener("click", enter);
+  passwordInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") enter();
+  });
+
+  function enter() {
     const pw = passwordInput.value;
     if (!passwordImages[pw]) {
       alert("잘못된 비밀번호");
@@ -137,110 +173,89 @@
 
     imageSrc = passwordImages[pw];
     passwordScreen.style.display = "none";
-    puzzleScreen.style.display = "block";
+    puzzleScreen.style.display = "flex";
     createPieces();
   }
 
-  enterBtn.addEventListener("click", enterPuzzle);
-  passwordInput.addEventListener("keydown", e => {
-    if (e.key === "Enter") enterPuzzle();
-  });
-
-  /* ===============================
-     퍼즐 로직 (기존 코드)
-  =============================== */
-  const puzzle = document.getElementById("puzzle");
-  const complete = document.getElementById("complete");
-
-  const rows = 6;   // 퍼즐 세로
-  const cols = 4;   // 퍼즐 가로 (총 24조각)
-
-  const puzzleWidth = 412;
-  const puzzleHeight = 592;
-
-  const pieceWidth = puzzleWidth / cols;
-  const pieceHeight = puzzleHeight / rows;
-
-  let pieces = [];
-  let selected = null;
-  let offsetX = 0;
-  let offsetY = 0;
-
   function createPieces() {
-    pieces = [];
     puzzle.querySelectorAll(".piece").forEach(p => p.remove());
+
+    const W = puzzle.clientWidth;
+    const H = puzzle.clientHeight;
+    const pw = W / cols;
+    const ph = H / rows;
 
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
         const piece = document.createElement("div");
         piece.className = "piece";
-        piece.style.width = pieceWidth + "px";
-        piece.style.height = pieceHeight + "px";
+        piece.style.width = pw + "px";
+        piece.style.height = ph + "px";
         piece.style.backgroundImage = `url(${imageSrc})`;
-        piece.style.backgroundPosition =
-          `-${x * pieceWidth}px -${y * pieceHeight}px`;
+        piece.style.backgroundSize = `${W}px ${H}px`;
+        piece.style.backgroundPosition = `-${x * pw}px -${y * ph}px`;
 
-        piece.dataset.correctX = x * pieceWidth;
-        piece.dataset.correctY = y * pieceHeight;
+        piece.dataset.cx = x * pw;
+        piece.dataset.cy = y * ph;
 
-        randomizePosition(piece);
-        addDragEvents(piece);
+        piece.style.left = Math.random() * (W - pw) + "px";
+        piece.style.top = Math.random() * (H - ph) + "px";
+
+        // ===== 마우스 =====
+        piece.addEventListener("mousedown", e => {
+          selected = piece;
+          offsetX = e.offsetX;
+          offsetY = e.offsetY;
+        });
+
+        // ===== 터치 =====
+        piece.addEventListener("touchstart", e => {
+          selected = piece;
+          const t = e.touches[0];
+          offsetX = t.clientX - piece.offsetLeft;
+          offsetY = t.clientY - piece.offsetTop;
+        });
 
         puzzle.appendChild(piece);
-        pieces.push(piece);
       }
     }
   }
 
-  function randomizePosition(piece) {
-    piece.style.left =
-      Math.random() * (puzzleWidth - pieceWidth) + "px";
-    piece.style.top =
-      Math.random() * (puzzleHeight - pieceHeight) + "px";
-  }
-
-  function addDragEvents(piece) {
-    piece.addEventListener("mousedown", e => {
-      selected = piece;
-      offsetX = e.offsetX;
-      offsetY = e.offsetY;
-      piece.style.zIndex = 1000;
-    });
-  }
-
+  /* ===== 마우스 이동 ===== */
   document.addEventListener("mousemove", e => {
     if (!selected) return;
-    selected.style.left =
-      e.pageX - puzzle.offsetLeft - offsetX + "px";
-    selected.style.top =
-      e.pageY - puzzle.offsetTop - offsetY + "px";
+    const rect = puzzle.getBoundingClientRect();
+    selected.style.left = e.clientX - rect.left - offsetX + "px";
+    selected.style.top = e.clientY - rect.top - offsetY + "px";
   });
 
-  document.addEventListener("mouseup", () => {
+  document.addEventListener("mouseup", release);
+
+  /* ===== 터치 이동 ===== */
+  document.addEventListener("touchmove", e => {
     if (!selected) return;
-    snapToCorrect(selected);
-    selected.style.zIndex = "";
-    selected = null;
-    checkComplete();
+    const t = e.touches[0];
+    const rect = puzzle.getBoundingClientRect();
+    selected.style.left = t.clientX - rect.left - offsetX + "px";
+    selected.style.top = t.clientY - rect.top - offsetY + "px";
   });
 
-  function snapToCorrect(piece) {
-    const correctX = parseInt(piece.dataset.correctX);
-    const correctY = parseInt(piece.dataset.correctY);
-    const currentX = parseInt(piece.style.left);
-    const currentY = parseInt(piece.style.top);
+  document.addEventListener("touchend", release);
 
-    if (
-      Math.abs(currentX - correctX) < 15 &&
-      Math.abs(currentY - correctY) < 15
-    ) {
-      piece.style.left = correctX + "px";
-      piece.style.top = correctY + "px";
-      piece.classList.add("fixed");
+  function release() {
+    if (!selected) return;
+
+    const dx = Math.abs(selected.offsetLeft - selected.dataset.cx);
+    const dy = Math.abs(selected.offsetTop - selected.dataset.cy);
+
+    if (dx < 15 && dy < 15) {
+      selected.style.left = selected.dataset.cx + "px";
+      selected.style.top = selected.dataset.cy + "px";
+      selected.classList.add("fixed");
     }
-  }
 
-  function checkComplete() {
+    selected = null;
+
     if (document.querySelectorAll(".fixed").length === rows * cols) {
       complete.classList.add("show");
     }
