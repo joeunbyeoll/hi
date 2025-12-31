@@ -2,104 +2,128 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
+  <title>Puzzle</title>
 
-  <!-- 모바일 확대/축소 완전 차단 -->
+  <!-- 모바일 확대 / 스크롤 차단 -->
   <meta name="viewport"
-        content="width=device-width,
-                 initial-scale=1.0,
-                 maximum-scale=1.0,
-                 user-scalable=no" />
-
-  <title>Mobile Puzzle</title>
+    content="width=device-width,
+             initial-scale=1.0,
+             maximum-scale=1.0,
+             user-scalable=no" />
 
   <style>
-    /* ===== 전체 스크롤 & 제스처 차단 ===== */
     html, body {
       margin: 0;
-      padding: 0;
-      width: 100%;
       height: 100%;
       overflow: hidden;
-      touch-action: none;
-      background: #111;
+      background: #000;
+      user-select: none;
+      color: #fff;
+      font-family: sans-serif;
     }
 
     body {
-      position: fixed; /* iOS 스크롤 방지 */
-    }
-
-    /* ===== 퍼즐 영역 ===== */
-    .puzzle {
-      width: 100vw;
-      height: 60vh; /* 화면의 60% */
-      margin: auto;
       display: flex;
-      align-items: center;
       justify-content: center;
-      background: #222;
-
-      touch-action: manipulation; /* 퍼즐만 터치 허용 */
+      align-items: center;
+      position: fixed;
+      width: 100%;
     }
 
-    /* ===== 이미지 ===== */
-    .puzzle img {
-      height: 100%;
-      width: auto;
-      object-fit: contain;
-      pointer-events: none; /* 이미지 자체는 터치 무시 */
-      user-select: none;
-    }
-
-    /* ===== 하단 여백 (스크롤 아님, 그냥 공간) ===== */
-    .footer {
-      height: 40vh;
+    /* ===== 비밀번호 화면 ===== */
+    #passwordScreen {
       display: flex;
+      flex-direction: column;
+      gap: 16px;
       align-items: center;
-      justify-content: center;
-      color: #666;
+    }
+
+    #passwordScreen input {
+      padding: 10px 14px;
+      font-size: 16px;
+      background: #111;
+      color: #fff;
+      border: 1px solid #555;
+      outline: none;
+      text-align: center;
+    }
+
+    #passwordScreen button {
+      padding: 8px 16px;
       font-size: 14px;
+      background: #fff;
+      color: #000;
+      border: none;
+    }
+
+    /* ===== 퍼즐 화면 ===== */
+    #puzzleScreen {
+      display: none;
+    }
+
+    #puzzle {
+      width: 412px;
+      height: 592px;
+      position: relative;
+      background: #f5f5f5;
+      overflow: hidden;
+      touch-action: none; /* 퍼즐 안에서만 제어 */
+    }
+
+    .piece {
+      position: absolute;
+      background-size: 412px 592px;
+      cursor: grab;
+    }
+
+    .piece:active {
+      cursor: grabbing;
+      z-index: 10;
+    }
+
+    .fixed {
+      pointer-events: none;
+    }
+
+    #complete {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 24px;
+      background: #f5f5f5;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 1s;
+    }
+
+    #complete.show {
+      opacity: 1;
     }
   </style>
 </head>
 
 <body>
 
-  <div class="puzzle" id="puzzle">
-    <img src="image.png" alt="puzzle image">
+<div id="passwordScreen">
+  <div>비밀번호를 입력하세요</div>
+  <input type="password" id="passwordInput" />
+  <button id="enterBtn">ENTER</button>
+</div>
+
+<div id="puzzleScreen">
+  <div id="puzzle">
+    <div id="complete">완성</div>
   </div>
+</div>
 
-  <div class="footer">
-    퍼즐 인터랙션 영역
-  </div>
-
-  <script>
-    /* ===== 전체 화면 스크롤 완전 차단 ===== */
-    document.addEventListener(
-      'touchmove',
-      function (e) {
-        e.preventDefault();
-      },
-      { passive: false }
-    );
-
-    /* ===== 퍼즐 터치 테스트 ===== */
-    const puzzle = document.getElementById('puzzle');
-
-    puzzle.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      console.log('퍼즐 터치 시작');
-    });
-
-    puzzle.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      console.log('퍼즐 이동 중');
-    });
-
-    puzzle.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      console.log('퍼즐 터치 종료');
-    });
-  </script>
-
-</body>
-</html>
+<script>
+/* ===============================
+   비밀번호 → 이미지
+================================ */
+const passwordImages = {
+  "0000": "image.png",
+  "1111": "image1.png",
+  "2222": "image2.png",
+  "duck": "im
