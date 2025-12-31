@@ -1,237 +1,183 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Puzzle</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Puzzle</title>
 
-  <style>
-    * {
-      box-sizing: border-box;
-    }
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: black;
+  overflow: hidden;
+  touch-action: none;
+  font-family: sans-serif;
+}
 
-    body {
-      margin: 0;
-      width: 100vw;
-      height: 100vh;
-      background: #000;
-      overflow: hidden;
-      user-select: none;
-      font-family: sans-serif;
-      color: #fff;
-      touch-action: none;
-    }
+/* ===== 비밀번호 화면 ===== */
+#password-screen {
+  position: fixed;
+  inset: 0;
+  background: black;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-    /* =====================
-       비밀번호 화면
-    ===================== */
-    #passwordScreen {
-      position: fixed;
-      inset: 0;
-      background: #000;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      gap: 16px;
-      z-index: 100;
-    }
+#password-input {
+  background: none;
+  border: none;
+  border-bottom: 2px solid white;
+  color: white;
+  font-size: 24px;
+  text-align: center;
+  outline: none;
+  width: 160px;
+}
 
-    #passwordScreen input {
-      padding: 12px 16px;
-      font-size: 18px;
-      background: #000;
-      color: #fff;
-      border: 1px solid #666;
-      text-align: center;
-      outline: none;
-    }
+/* ===== 퍼즐 화면 ===== */
+#puzzle-screen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: black;
+  align-items: center;
+  justify-content: center;
+}
 
-    #passwordScreen button {
-      padding: 8px 20px;
-      font-size: 14px;
-      border: none;
-      background: #fff;
-      color: #000;
-    }
+#puzzle-container {
+  width: 60vw;
+  height: 60vw;
+  max-width: 90vh;
+  max-height: 90vh;
+  position: relative;
+  background: #000;
+}
 
-    /* =====================
-       퍼즐 화면
-    ===================== */
-    #puzzleScreen {
-      width: 100vw;
-      height: 100vh;
-      display: none;
-      justify-content: center;
-      align-items: center;
-    }
-
-    #puzzleWrapper {
-      height: 60vh;
-      aspect-ratio: 412 / 592;
-    }
-
-    #puzzle {
-      width: 100%;
-      height: 100%;
-      position: relative;
-      background: #f2f2f2;
-      overflow: hidden;
-      touch-action: none;
-    }
-
-    .piece {
-      position: absolute;
-      background-repeat: no-repeat;
-      touch-action: none;
-    }
-
-    .fixed {
-      pointer-events: none;
-    }
-
-    #complete {
-      position: absolute;
-      inset: 0;
-      background: rgba(245,245,245,0.9);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 24px;
-      opacity: 0;
-      transition: opacity 1s;
-      pointer-events: none;
-    }
-
-    #complete.show {
-      opacity: 1;
-    }
-  </style>
+.piece {
+  position: absolute;
+  background-size: 100% 100%;
+  cursor: grab;
+  touch-action: none;
+}
+</style>
 </head>
 
 <body>
 
-<!-- 비밀번호 화면 -->
-<div id="passwordScreen">
-  <div>비밀번호를 입력하세요</div>
-  <input type="password" id="passwordInput" />
-  <button id="enterBtn">ENTER</button>
+<!-- 비밀번호 -->
+<div id="password-screen">
+  <input id="password-input" type="password" placeholder="PASSWORD" />
 </div>
 
-<!-- 퍼즐 화면 -->
-<div id="puzzleScreen">
-  <div id="puzzleWrapper">
-    <div id="puzzle">
-      <div id="complete">완성</div>
-    </div>
-  </div>
+<!-- 퍼즐 -->
+<div id="puzzle-screen">
+  <div id="puzzle-container"></div>
 </div>
 
 <script>
-  /* =====================
-     비밀번호 → 이미지
-  ===================== */
-  const passwordImages = {
-    "0000": "image.png",
-    "1111": "image1.png",
-    "2222": "image2.png",
-    "duck": "image3.png"
-  };
+/* ===============================
+   비밀번호 → 이미지 매핑
+================================ */
+const PASSWORD_MAP = {
+  "1111": "images/puzzle1.jpg",
+  "2222": "images/puzzle2.jpg"
+};
 
-  const passwordScreen = document.getElementById("passwordScreen");
-  const puzzleScreen = document.getElementById("puzzleScreen");
-  const puzzle = document.getElementById("puzzle");
-  const complete = document.getElementById("complete");
+const passwordInput = document.getElementById("password-input");
+const passwordScreen = document.getElementById("password-screen");
+const puzzleScreen = document.getElementById("puzzle-screen");
+const container = document.getElementById("puzzle-container");
 
-  const rows = 6;
+passwordInput.addEventListener("input", () => {
+  if (passwordInput.value.length === 4) {
+    const img = PASSWORD_MAP[passwordInput.value];
+    if (img) {
+      passwordScreen.style.display = "none";
+      puzzleScreen.style.display = "flex";
+      createPuzzle(img);
+    } else {
+      passwordInput.value = "";
+    }
+  }
+});
+
+/* ===============================
+   퍼즐 생성
+================================ */
+function createPuzzle(imageSrc) {
+  const rows = 4;
   const cols = 4;
 
-  let imageSrc = "";
-  let selected = null;
-  let offsetX = 0;
-  let offsetY = 0;
+  const size = container.clientWidth;
+  const pieceW = size / cols;
+  const pieceH = size / rows;
 
-  document.getElementById("enterBtn").addEventListener("click", enter);
-  document.getElementById("passwordInput").addEventListener("keydown", e => {
-    if (e.key === "Enter") enter();
-  });
+  container.innerHTML = "";
 
-  function enter() {
-    const pw = passwordInput.value;
-    if (!passwordImages[pw]) {
-      alert("잘못된 비밀번호");
-      return;
-    }
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const piece = document.createElement("div");
+      piece.className = "piece";
+      piece.style.width = pieceW + "px";
+      piece.style.height = pieceH + "px";
+      piece.style.backgroundImage = `url(${imageSrc})`;
+      piece.style.backgroundPosition = `${-x * pieceW}px ${-y * pieceH}px`;
 
-    imageSrc = passwordImages[pw];
-    passwordScreen.style.display = "none";
-    puzzleScreen.style.display = "flex";
-    createPieces();
-  }
+      piece.dataset.correctX = x * pieceW;
+      piece.dataset.correctY = y * pieceH;
 
-  function createPieces() {
-    puzzle.querySelectorAll(".piece").forEach(p => p.remove());
+      piece.style.left = Math.random() * (size - pieceW) + "px";
+      piece.style.top = Math.random() * (size - pieceH) + "px";
 
-    const W = puzzle.clientWidth;
-    const H = puzzle.clientHeight;
-    const pw = W / cols;
-    const ph = H / rows;
-
-    for (let y = 0; y < rows; y++) {
-      for (let x = 0; x < cols; x++) {
-        const piece = document.createElement("div");
-        piece.className = "piece";
-        piece.style.width = pw + "px";
-        piece.style.height = ph + "px";
-        piece.style.backgroundImage = `url(${imageSrc})`;
-        piece.style.backgroundSize = `${W}px ${H}px`;
-        piece.style.backgroundPosition = `-${x * pw}px -${y * ph}px`;
-
-        piece.dataset.cx = x * pw;
-        piece.dataset.cy = y * ph;
-
-        piece.style.left = Math.random() * (W - pw) + "px";
-        piece.style.top = Math.random() * (H - ph) + "px";
-
-        piece.addEventListener("touchstart", e => {
-          selected = piece;
-          const t = e.touches[0];
-          offsetX = t.clientX - piece.offsetLeft;
-          offsetY = t.clientY - piece.offsetTop;
-        });
-
-        puzzle.appendChild(piece);
-      }
+      enableDrag(piece);
+      container.appendChild(piece);
     }
   }
+}
 
-  document.addEventListener("touchmove", e => {
-    if (!selected) return;
-    const t = e.touches[0];
-    selected.style.left = t.clientX - offsetX + "px";
-    selected.style.top = t.clientY - offsetY + "px";
+/* ===============================
+   드래그 (모바일 + 마우스)
+================================ */
+function enableDrag(piece) {
+  let offsetX, offsetY;
+
+  piece.addEventListener("pointerdown", e => {
+    piece.setPointerCapture(e.pointerId);
+    offsetX = e.clientX - piece.offsetLeft;
+    offsetY = e.clientY - piece.offsetTop;
+    piece.style.cursor = "grabbing";
   });
 
-  document.addEventListener("touchend", () => {
-    if (!selected) return;
-
-    const dx = Math.abs(selected.offsetLeft - selected.dataset.cx);
-    const dy = Math.abs(selected.offsetTop - selected.dataset.cy);
-
-    if (dx < 15 && dy < 15) {
-      selected.style.left = selected.dataset.cx + "px";
-      selected.style.top = selected.dataset.cy + "px";
-      selected.classList.add("fixed");
-    }
-
-    selected = null;
-
-    if (document.querySelectorAll(".fixed").length === rows * cols) {
-      complete.classList.add("show");
-    }
+  piece.addEventListener("pointermove", e => {
+    if (e.pressure === 0) return;
+    piece.style.left = e.clientX - offsetX + "px";
+    piece.style.top = e.clientY - offsetY + "px";
   });
+
+  piece.addEventListener("pointerup", () => {
+    piece.style.cursor = "grab";
+    snapIfClose(piece);
+  });
+}
+
+/* ===============================
+   스냅
+================================ */
+function snapIfClose(piece) {
+  const dx = piece.offsetLeft - piece.dataset.correctX;
+  const dy = piece.offsetTop - piece.dataset.correctY;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+
+  if (distance < 20) {
+    piece.style.left = piece.dataset.correctX + "px";
+    piece.style.top = piece.dataset.correctY + "px";
+    piece.style.pointerEvents = "none";
+  }
+}
 </script>
-
 </body>
 </html>
