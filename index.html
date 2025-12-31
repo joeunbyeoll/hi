@@ -7,25 +7,21 @@
   <title>Hi2026</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     html, body {
       margin: 0;
       width: 100%;
       height: 100%;
       background: #000;
-      overflow: hidden;           /* ✅ 스크롤 차단 */
-      touch-action: none;         /* ✅ 확대/스크롤 차단 */
+      overflow: hidden;
+      touch-action: none;
       user-select: none;
       font-family: sans-serif;
       color: #fff;
     }
 
-    /* =====================
-       비밀번호 화면
-    ===================== */
+    /* ===== 비밀번호 화면 ===== */
     #passwordScreen {
       position: fixed;
       inset: 0;
@@ -57,9 +53,7 @@
       cursor: pointer;
     }
 
-    /* =====================
-       퍼즐 화면
-    ===================== */
+    /* ===== 퍼즐 화면 ===== */
     #puzzleScreen {
       width: 100vw;
       height: 100vh;
@@ -68,7 +62,6 @@
       align-items: center;
     }
 
-    /* 🔹 화면의 60%만 차지 */
     #puzzleWrapper {
       height: 60vh;
       aspect-ratio: 412 / 592;
@@ -85,8 +78,8 @@
     .piece {
       position: absolute;
       background-repeat: no-repeat;
-      cursor: grab;
       touch-action: none;
+      cursor: grab;
     }
 
     .piece:active {
@@ -135,9 +128,7 @@
 </div>
 
 <script>
-  /* =====================
-     비밀번호 → 이미지
-  ===================== */
+  /* ===== 비밀번호 → 이미지 ===== */
   const passwordImages = {
     "0009": "image1.png",
     "2222": "image2.png",
@@ -176,6 +167,7 @@
     createPieces();
   }
 
+  /* ===== 퍼즐 생성 ===== */
   function createPieces() {
     puzzle.querySelectorAll(".piece").forEach(p => p.remove());
 
@@ -200,19 +192,19 @@
         piece.style.left = Math.random() * (W - pw) + "px";
         piece.style.top = Math.random() * (H - ph) + "px";
 
-        // ===== 마우스 =====
         piece.addEventListener("mousedown", e => {
           selected = piece;
           offsetX = e.offsetX;
           offsetY = e.offsetY;
+          piece.style.zIndex = 10;
         });
 
-        // ===== 터치 =====
         piece.addEventListener("touchstart", e => {
           selected = piece;
           const t = e.touches[0];
           offsetX = t.clientX - piece.offsetLeft;
           offsetY = t.clientY - piece.offsetTop;
+          piece.style.zIndex = 10;
         });
 
         puzzle.appendChild(piece);
@@ -220,39 +212,57 @@
     }
   }
 
-  /* ===== 마우스 이동 ===== */
+  /* ===== 퍼즐 영역 밖 방지 ===== */
+  function clamp(piece) {
+    const rect = puzzle.getBoundingClientRect();
+    const maxX = rect.width - piece.offsetWidth;
+    const maxY = rect.height - piece.offsetHeight;
+
+    let x = piece.offsetLeft;
+    let y = piece.offsetTop;
+
+    x = Math.max(0, Math.min(x, maxX));
+    y = Math.max(0, Math.min(y, maxY));
+
+    piece.style.left = x + "px";
+    piece.style.top = y + "px";
+  }
+
+  /* ===== 이동 ===== */
   document.addEventListener("mousemove", e => {
     if (!selected) return;
     const rect = puzzle.getBoundingClientRect();
     selected.style.left = e.clientX - rect.left - offsetX + "px";
     selected.style.top = e.clientY - rect.top - offsetY + "px";
+    clamp(selected);
   });
 
-  document.addEventListener("mouseup", release);
-
-  /* ===== 터치 이동 ===== */
   document.addEventListener("touchmove", e => {
     if (!selected) return;
     const t = e.touches[0];
     const rect = puzzle.getBoundingClientRect();
     selected.style.left = t.clientX - rect.left - offsetX + "px";
     selected.style.top = t.clientY - rect.top - offsetY + "px";
-  });
+    clamp(selected);
+  }, { passive: false });
 
+  document.addEventListener("mouseup", release);
   document.addEventListener("touchend", release);
 
+  /* ===== 놓기 ===== */
   function release() {
     if (!selected) return;
 
     const dx = Math.abs(selected.offsetLeft - selected.dataset.cx);
     const dy = Math.abs(selected.offsetTop - selected.dataset.cy);
 
-    if (dx < 15 && dy < 15) {
+    if (dx < 18 && dy < 18) {
       selected.style.left = selected.dataset.cx + "px";
       selected.style.top = selected.dataset.cy + "px";
       selected.classList.add("fixed");
     }
 
+    selected.style.zIndex = "";
     selected = null;
 
     if (document.querySelectorAll(".fixed").length === rows * cols) {
