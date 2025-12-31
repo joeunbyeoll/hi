@@ -1,193 +1,251 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Puzzle</title>
+  <meta charset="UTF-8" />
+  <title>Puzzle</title>
 
-<style>
-/* ===== 공통 ===== */
-html, body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  background: black;
-  overflow: hidden;
-  touch-action: none;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-}
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      user-select: none;
+      color: #fff;
+      font-family: sans-serif;
+    }
 
-/* ===== 비밀번호 화면 ===== */
-#password-screen {
-  position: fixed;
-  inset: 0;
-  background: black;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+    /* ===== 비밀번호 화면 ===== */
+    #passwordScreen {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      align-items: center;
+    }
 
-#password-box {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+    #passwordScreen input {
+      padding: 10px 14px;
+      font-size: 16px;
+      background: #111;
+      color: #fff;
+      border: 1px solid #555;
+      outline: none;
+      text-align: center;
+    }
 
-#password-input {
-  width: 180px;
-  padding: 10px 0;
-  font-size: 24px;
-  text-align: center;
-  color: white;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid white;
-  outline: none;
-  letter-spacing: 6px;
-}
+    #passwordScreen button {
+      padding: 8px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #fff;
+      color: #000;
+      border: none;
+    }
 
-/* placeholder 제거 */
-#password-input::placeholder {
-  color: rgba(255,255,255,0.4);
-}
+    /* ===== 퍼즐 화면 ===== */
+    #puzzleScreen {
+      display: none;
+    }
 
-/* ===== 퍼즐 화면 ===== */
-#puzzle-screen {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: black;
-  align-items: center;
-  justify-content: center;
-}
+    #puzzle {
+      width: 412px;
+      height: 592px;
+      position: relative;
+      background: #f5f5f5;
+      overflow: hidden;
+    }
 
-#puzzle-container {
-  width: 60vw;
-  height: 60vw;
-  max-width: 90vh;
-  max-height: 90vh;
-  position: relative;
-}
+    .piece {
+      position: absolute;
+      cursor: grab;
+      background-size: 412px 592px;
+      transition: box-shadow 0.2s;
+    }
 
-.piece {
-  position: absolute;
-  background-size: 100% 100%;
-  cursor: grab;
-  touch-action: none;
-}
-</style>
+    .piece:active {
+      cursor: grabbing;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.25);
+      z-index: 10;
+    }
+
+    .fixed {
+      pointer-events: none;
+      cursor: default;
+      box-shadow: none;
+    }
+
+    #complete {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 24px;
+      background: #f5f5f5;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 1s;
+    }
+
+    #complete.show {
+      opacity: 1;
+    }
+  </style>
 </head>
 
 <body>
 
-<!-- 비밀번호 -->
-<div id="password-screen">
-  <div id="password-box">
-    <input
-      id="password-input"
-      type="password"
-      inputmode="numeric"
-      maxlength="4"
-      placeholder="••••"
-      autofocus
-    />
+<!-- ===== 비밀번호 입력 화면 ===== -->
+<div id="passwordScreen">
+  <div>비밀번호를 입력하세요</div>
+  <input type="password" id="passwordInput" />
+  <button id="enterBtn">ENTER</button>
+</div>
+
+<!-- ===== 퍼즐 화면 ===== -->
+<div id="puzzleScreen">
+  <div id="puzzle">
+    <div id="complete">완성</div>
   </div>
 </div>
 
-<!-- 퍼즐 -->
-<div id="puzzle-screen">
-  <div id="puzzle-container"></div>
-</div>
-
 <script>
-/* ===== 비밀번호 → 이미지 ===== */
-const PASSWORD_MAP = {
-  "1111": "images/puzzle1.jpg",
-  "2222": "images/puzzle2.jpg"
-};
+  /* ===============================
+     비밀번호 → 이미지 매핑
+  =============================== */
+  const passwordImages = {
+    "0009": "image1.png",
+    "2222": "image2.png",
+    "duck": "image3.png"
+  };
 
-const passwordInput = document.getElementById("password-input");
-const passwordScreen = document.getElementById("password-screen");
-const puzzleScreen = document.getElementById("puzzle-screen");
-const container = document.getElementById("puzzle-container");
+  const passwordScreen = document.getElementById("passwordScreen");
+  const puzzleScreen = document.getElementById("puzzleScreen");
+  const passwordInput = document.getElementById("passwordInput");
+  const enterBtn = document.getElementById("enterBtn");
 
-passwordInput.addEventListener("input", () => {
-  if (passwordInput.value.length === 4) {
-    const img = PASSWORD_MAP[passwordInput.value];
-    if (img) {
-      passwordScreen.style.display = "none";
-      puzzleScreen.style.display = "flex";
-      createPuzzle(img);
-    } else {
-      passwordInput.value = "";
+  let imageSrc = "";
+
+  function enterPuzzle() {
+    const pw = passwordInput.value;
+    if (!passwordImages[pw]) {
+      alert("잘못된 비밀번호");
+      return;
+    }
+
+    imageSrc = passwordImages[pw];
+    passwordScreen.style.display = "none";
+    puzzleScreen.style.display = "block";
+    createPieces();
+  }
+
+  enterBtn.addEventListener("click", enterPuzzle);
+  passwordInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") enterPuzzle();
+  });
+
+  /* ===============================
+     퍼즐 로직 (기존 코드)
+  =============================== */
+  const puzzle = document.getElementById("puzzle");
+  const complete = document.getElementById("complete");
+
+  const rows = 6;   // 퍼즐 세로
+  const cols = 4;   // 퍼즐 가로 (총 24조각)
+
+  const puzzleWidth = 412;
+  const puzzleHeight = 592;
+
+  const pieceWidth = puzzleWidth / cols;
+  const pieceHeight = puzzleHeight / rows;
+
+  let pieces = [];
+  let selected = null;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  function createPieces() {
+    pieces = [];
+    puzzle.querySelectorAll(".piece").forEach(p => p.remove());
+
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const piece = document.createElement("div");
+        piece.className = "piece";
+        piece.style.width = pieceWidth + "px";
+        piece.style.height = pieceHeight + "px";
+        piece.style.backgroundImage = `url(${imageSrc})`;
+        piece.style.backgroundPosition =
+          `-${x * pieceWidth}px -${y * pieceHeight}px`;
+
+        piece.dataset.correctX = x * pieceWidth;
+        piece.dataset.correctY = y * pieceHeight;
+
+        randomizePosition(piece);
+        addDragEvents(piece);
+
+        puzzle.appendChild(piece);
+        pieces.push(piece);
+      }
     }
   }
-});
 
-/* ===== 퍼즐 생성 ===== */
-function createPuzzle(imageSrc) {
-  const rows = 4;
-  const cols = 4;
+  function randomizePosition(piece) {
+    piece.style.left =
+      Math.random() * (puzzleWidth - pieceWidth) + "px";
+    piece.style.top =
+      Math.random() * (puzzleHeight - pieceHeight) + "px";
+  }
 
-  const size = container.clientWidth;
-  const pieceW = size / cols;
-  const pieceH = size / rows;
+  function addDragEvents(piece) {
+    piece.addEventListener("mousedown", e => {
+      selected = piece;
+      offsetX = e.offsetX;
+      offsetY = e.offsetY;
+      piece.style.zIndex = 1000;
+    });
+  }
 
-  container.innerHTML = "";
+  document.addEventListener("mousemove", e => {
+    if (!selected) return;
+    selected.style.left =
+      e.pageX - puzzle.offsetLeft - offsetX + "px";
+    selected.style.top =
+      e.pageY - puzzle.offsetTop - offsetY + "px";
+  });
 
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < cols; x++) {
-      const piece = document.createElement("div");
-      piece.className = "piece";
-      piece.style.width = pieceW + "px";
-      piece.style.height = pieceH + "px";
-      piece.style.backgroundImage = `url(${imageSrc})`;
-      piece.style.backgroundPosition = `${-x * pieceW}px ${-y * pieceH}px`;
+  document.addEventListener("mouseup", () => {
+    if (!selected) return;
+    snapToCorrect(selected);
+    selected.style.zIndex = "";
+    selected = null;
+    checkComplete();
+  });
 
-      piece.dataset.correctX = x * pieceW;
-      piece.dataset.correctY = y * pieceH;
+  function snapToCorrect(piece) {
+    const correctX = parseInt(piece.dataset.correctX);
+    const correctY = parseInt(piece.dataset.correctY);
+    const currentX = parseInt(piece.style.left);
+    const currentY = parseInt(piece.style.top);
 
-      piece.style.left = Math.random() * (size - pieceW) + "px";
-      piece.style.top = Math.random() * (size - pieceH) + "px";
-
-      enableDrag(piece);
-      container.appendChild(piece);
+    if (
+      Math.abs(currentX - correctX) < 15 &&
+      Math.abs(currentY - correctY) < 15
+    ) {
+      piece.style.left = correctX + "px";
+      piece.style.top = correctY + "px";
+      piece.classList.add("fixed");
     }
   }
-}
 
-/* ===== 드래그 (모바일 + 마우스) ===== */
-function enableDrag(piece) {
-  let offsetX, offsetY;
-
-  piece.addEventListener("pointerdown", e => {
-    piece.setPointerCapture(e.pointerId);
-    offsetX = e.clientX - piece.offsetLeft;
-    offsetY = e.clientY - piece.offsetTop;
-  });
-
-  piece.addEventListener("pointermove", e => {
-    if (e.pressure === 0) return;
-    piece.style.left = e.clientX - offsetX + "px";
-    piece.style.top = e.clientY - offsetY + "px";
-  });
-
-  piece.addEventListener("pointerup", () => {
-    snapIfClose(piece);
-  });
-}
-
-/* ===== 스냅 ===== */
-function snapIfClose(piece) {
-  const dx = piece.offsetLeft - piece.dataset.correctX;
-  const dy = piece.offsetTop - piece.dataset.correctY;
-  if (Math.hypot(dx, dy) < 20) {
-    piece.style.left = piece.dataset.correctX + "px";
-    piece.style.top = piece.dataset.correctY + "px";
-    piece.style.pointerEvents = "none";
+  function checkComplete() {
+    if (document.querySelectorAll(".fixed").length === rows * cols) {
+      complete.classList.add("show");
+    }
   }
-}
 </script>
+
 </body>
 </html>
