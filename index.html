@@ -2,73 +2,83 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-
-  <!-- 🔴 이거 없으면 모바일 망가짐 -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Puzzle</title>
 
   <style>
-    body {
-      margin: 0;
-      background: #000;
-      width: 100vw;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      user-select: none;
-      color: #fff;
-      font-family: sans-serif;
-      overflow: hidden; /* 스크롤 차단 */
-      touch-action: none; /* 확대/스크롤 차단 */
+    * {
+      box-sizing: border-box;
     }
 
-    /* ===== 비밀번호 화면 ===== */
+    body {
+      margin: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+      overflow: hidden;
+      user-select: none;
+      font-family: sans-serif;
+      color: #fff;
+      touch-action: none;
+    }
+
+    /* =====================
+       비밀번호 화면
+    ===================== */
     #passwordScreen {
+      position: fixed;
+      inset: 0;
+      background: #000;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      justify-content: center;
       align-items: center;
+      gap: 16px;
+      z-index: 100;
     }
 
     #passwordScreen input {
-      padding: 10px 14px;
-      font-size: 16px;
-      background: #111;
+      padding: 12px 16px;
+      font-size: 18px;
+      background: #000;
       color: #fff;
-      border: 1px solid #555;
+      border: 1px solid #666;
       text-align: center;
+      outline: none;
     }
 
     #passwordScreen button {
-      padding: 8px 16px;
+      padding: 8px 20px;
+      font-size: 14px;
+      border: none;
       background: #fff;
       color: #000;
-      border: none;
     }
 
-    /* ===== 퍼즐 화면 ===== */
+    /* =====================
+       퍼즐 화면
+    ===================== */
     #puzzleScreen {
-      display: none;
       width: 100vw;
       height: 100vh;
-      display: flex;
+      display: none;
       justify-content: center;
       align-items: center;
     }
 
     #puzzleWrapper {
-      height: 60vh;               /* 👈 화면의 60% */
-      aspect-ratio: 412 / 592;    /* 이미지 비율 유지 */
+      height: 60vh;
+      aspect-ratio: 412 / 592;
     }
 
     #puzzle {
       width: 100%;
       height: 100%;
-      background: #f5f5f5;
       position: relative;
+      background: #f2f2f2;
       overflow: hidden;
+      touch-action: none;
     }
 
     .piece {
@@ -84,13 +94,14 @@
     #complete {
       position: absolute;
       inset: 0;
+      background: rgba(245,245,245,0.9);
       display: flex;
       justify-content: center;
       align-items: center;
       font-size: 24px;
-      background: rgba(245,245,245,0.9);
       opacity: 0;
       transition: opacity 1s;
+      pointer-events: none;
     }
 
     #complete.show {
@@ -101,12 +112,14 @@
 
 <body>
 
+<!-- 비밀번호 화면 -->
 <div id="passwordScreen">
   <div>비밀번호를 입력하세요</div>
-  <input type="password" id="passwordInput">
+  <input type="password" id="passwordInput" />
   <button id="enterBtn">ENTER</button>
 </div>
 
+<!-- 퍼즐 화면 -->
 <div id="puzzleScreen">
   <div id="puzzleWrapper">
     <div id="puzzle">
@@ -116,9 +129,13 @@
 </div>
 
 <script>
+  /* =====================
+     비밀번호 → 이미지
+  ===================== */
   const passwordImages = {
     "0000": "image.png",
     "1111": "image1.png",
+    "2222": "image2.png",
     "duck": "image3.png"
   };
 
@@ -127,15 +144,20 @@
   const puzzle = document.getElementById("puzzle");
   const complete = document.getElementById("complete");
 
+  const rows = 6;
+  const cols = 4;
+
   let imageSrc = "";
   let selected = null;
   let offsetX = 0;
   let offsetY = 0;
 
-  const rows = 6;
-  const cols = 4;
+  document.getElementById("enterBtn").addEventListener("click", enter);
+  document.getElementById("passwordInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") enter();
+  });
 
-  document.getElementById("enterBtn").onclick = () => {
+  function enter() {
     const pw = passwordInput.value;
     if (!passwordImages[pw]) {
       alert("잘못된 비밀번호");
@@ -146,16 +168,15 @@
     passwordScreen.style.display = "none";
     puzzleScreen.style.display = "flex";
     createPieces();
-  };
+  }
 
   function createPieces() {
     puzzle.querySelectorAll(".piece").forEach(p => p.remove());
 
-    const w = puzzle.clientWidth;
-    const h = puzzle.clientHeight;
-
-    const pw = w / cols;
-    const ph = h / rows;
+    const W = puzzle.clientWidth;
+    const H = puzzle.clientHeight;
+    const pw = W / cols;
+    const ph = H / rows;
 
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
@@ -164,14 +185,14 @@
         piece.style.width = pw + "px";
         piece.style.height = ph + "px";
         piece.style.backgroundImage = `url(${imageSrc})`;
-        piece.style.backgroundSize = `${w}px ${h}px`;
+        piece.style.backgroundSize = `${W}px ${H}px`;
         piece.style.backgroundPosition = `-${x * pw}px -${y * ph}px`;
 
-        piece.dataset.x = x * pw;
-        piece.dataset.y = y * ph;
+        piece.dataset.cx = x * pw;
+        piece.dataset.cy = y * ph;
 
-        piece.style.left = Math.random() * (w - pw) + "px";
-        piece.style.top = Math.random() * (h - ph) + "px";
+        piece.style.left = Math.random() * (W - pw) + "px";
+        piece.style.top = Math.random() * (H - ph) + "px";
 
         piece.addEventListener("touchstart", e => {
           selected = piece;
@@ -194,22 +215,22 @@
 
   document.addEventListener("touchend", () => {
     if (!selected) return;
-    snap(selected);
-    selected = null;
-  });
 
-  function snap(p) {
-    const dx = Math.abs(p.offsetLeft - p.dataset.x);
-    const dy = Math.abs(p.offsetTop - p.dataset.y);
+    const dx = Math.abs(selected.offsetLeft - selected.dataset.cx);
+    const dy = Math.abs(selected.offsetTop - selected.dataset.cy);
+
     if (dx < 15 && dy < 15) {
-      p.style.left = p.dataset.x + "px";
-      p.style.top = p.dataset.y + "px";
-      p.classList.add("fixed");
+      selected.style.left = selected.dataset.cx + "px";
+      selected.style.top = selected.dataset.cy + "px";
+      selected.classList.add("fixed");
     }
+
+    selected = null;
+
     if (document.querySelectorAll(".fixed").length === rows * cols) {
       complete.classList.add("show");
     }
-  }
+  });
 </script>
 
 </body>
