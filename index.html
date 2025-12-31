@@ -4,6 +4,15 @@
   <meta charset="UTF-8" />
   <title>Puzzle</title>
 
+  <!-- ✅ 모바일 확대/축소 차단 -->
+  <meta name="viewport"
+        content="width=device-width,
+                 height=device-height,
+                 initial-scale=1.0,
+                 maximum-scale=1.0,
+                 minimum-scale=1.0,
+                 user-scalable=no">
+
   <style>
     body {
       margin: 0;
@@ -49,18 +58,20 @@
       display: none;
     }
 
+    /* ✅ 화면 높이의 60% + 비율 유지 */
     #puzzle {
-      width: 412px;
-      height: 592px;
-      position: relative;
+      height: 60vh;
+      aspect-ratio: 103 / 148;
+      max-width: 90vw;
       background: #f5f5f5;
+      position: relative;
       overflow: hidden;
     }
 
     .piece {
       position: absolute;
       cursor: grab;
-      background-size: 412px 592px;
+      background-size: 100% 100%;
       transition: box-shadow 0.2s;
     }
 
@@ -84,6 +95,7 @@
       align-items: center;
       font-size: 24px;
       background: #f5f5f5;
+      color: #000;
       opacity: 0;
       pointer-events: none;
       transition: opacity 1s;
@@ -127,7 +139,16 @@
   const passwordInput = document.getElementById("passwordInput");
   const enterBtn = document.getElementById("enterBtn");
 
+  const puzzle = document.getElementById("puzzle");
+  const complete = document.getElementById("complete");
+
+  const rows = 6;
+  const cols = 4;
+
   let imageSrc = "";
+  let selected = null;
+  let offsetX = 0;
+  let offsetY = 0;
 
   function enterPuzzle() {
     const pw = passwordInput.value;
@@ -147,29 +168,13 @@
     if (e.key === "Enter") enterPuzzle();
   });
 
-  /* ===============================
-     퍼즐 로직 (기존 코드)
-  =============================== */
-  const puzzle = document.getElementById("puzzle");
-  const complete = document.getElementById("complete");
-
-  const rows = 6;   // 퍼즐 세로
-  const cols = 4;   // 퍼즐 가로 (총 24조각)
-
-  const puzzleWidth = 412;
-  const puzzleHeight = 592;
-
-  const pieceWidth = puzzleWidth / cols;
-  const pieceHeight = puzzleHeight / rows;
-
-  let pieces = [];
-  let selected = null;
-  let offsetX = 0;
-  let offsetY = 0;
-
   function createPieces() {
-    pieces = [];
     puzzle.querySelectorAll(".piece").forEach(p => p.remove());
+
+    const puzzleWidth = puzzle.clientWidth;
+    const puzzleHeight = puzzle.clientHeight;
+    const pieceWidth = puzzleWidth / cols;
+    const pieceHeight = puzzleHeight / rows;
 
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
@@ -184,29 +189,20 @@
         piece.dataset.correctX = x * pieceWidth;
         piece.dataset.correctY = y * pieceHeight;
 
-        randomizePosition(piece);
-        addDragEvents(piece);
+        piece.style.left =
+          Math.random() * (puzzleWidth - pieceWidth) + "px";
+        piece.style.top =
+          Math.random() * (puzzleHeight - pieceHeight) + "px";
+
+        piece.addEventListener("mousedown", e => {
+          selected = piece;
+          offsetX = e.offsetX;
+          offsetY = e.offsetY;
+        });
 
         puzzle.appendChild(piece);
-        pieces.push(piece);
       }
     }
-  }
-
-  function randomizePosition(piece) {
-    piece.style.left =
-      Math.random() * (puzzleWidth - pieceWidth) + "px";
-    piece.style.top =
-      Math.random() * (puzzleHeight - pieceHeight) + "px";
-  }
-
-  function addDragEvents(piece) {
-    piece.addEventListener("mousedown", e => {
-      selected = piece;
-      offsetX = e.offsetX;
-      offsetY = e.offsetY;
-      piece.style.zIndex = 1000;
-    });
   }
 
   document.addEventListener("mousemove", e => {
@@ -219,33 +215,24 @@
 
   document.addEventListener("mouseup", () => {
     if (!selected) return;
-    snapToCorrect(selected);
-    selected.style.zIndex = "";
-    selected = null;
-    checkComplete();
-  });
 
-  function snapToCorrect(piece) {
-    const correctX = parseInt(piece.dataset.correctX);
-    const correctY = parseInt(piece.dataset.correctY);
-    const currentX = parseInt(piece.style.left);
-    const currentY = parseInt(piece.style.top);
+    const cx = parseInt(selected.dataset.correctX);
+    const cy = parseInt(selected.dataset.correctY);
+    const x = parseInt(selected.style.left);
+    const y = parseInt(selected.style.top);
 
-    if (
-      Math.abs(currentX - correctX) < 15 &&
-      Math.abs(currentY - correctY) < 15
-    ) {
-      piece.style.left = correctX + "px";
-      piece.style.top = correctY + "px";
-      piece.classList.add("fixed");
+    if (Math.abs(x - cx) < 15 && Math.abs(y - cy) < 15) {
+      selected.style.left = cx + "px";
+      selected.style.top = cy + "px";
+      selected.classList.add("fixed");
     }
-  }
 
-  function checkComplete() {
+    selected = null;
+
     if (document.querySelectorAll(".fixed").length === rows * cols) {
       complete.classList.add("show");
     }
-  }
+  });
 </script>
 
 </body>
